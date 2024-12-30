@@ -891,6 +891,27 @@ void FoxgloveBridge::serviceRequest(const foxglove::ServiceRequest& request,
   }
 
   auto client = clientIt->second;
+  if (serviceIt->second.name.find("set_parameters") != std::string::npos) {
+    RCLCPP_INFO(this->get_logger(), "Calling service: %s with content: ", serviceIt->second.name.c_str());
+    // Print the contents of the request to screen
+    // Create SerializedMessage
+    rclcpp::SerializedMessage serialized_msg(request.data.size());
+    memcpy(serialized_msg.get_rcl_serialized_message().buffer, request.data.data(), request.data.size());
+    serialized_msg.get_rcl_serialized_message().buffer_length = request.data.size();
+
+    // Create Serialization object
+    rclcpp::Serialization<rcl_interfaces::srv::SetParameters_Request> serializer;
+
+    // Deserialize
+    rcl_interfaces::srv::SetParameters_Request ros_msg;
+    serializer.deserialize_message(&serialized_msg, &ros_msg);
+
+    // Print deserialized message
+    for (auto& param : ros_msg.parameters) {
+      RCLCPP_INFO(this->get_logger(), "Parameter: %s", param.name.c_str());
+      RCLCPP_INFO(this->get_logger(), "Value: %s", std::to_string(param.value.double_value).c_str());
+    }
+  }
   if (!client->wait_for_service(1s)) {
     throw foxglove::ServiceError(request.serviceId,
                                  "Service " + serviceIt->second.name + " is not available");
